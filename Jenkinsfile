@@ -1,24 +1,35 @@
 pipeline {
   agent {
     node {
-      label 'docker-slave'
+      label 'dockercli-slave'
     }
     
   }
   stages {
-    stage('error') {
+    stage('build') {
       steps {
-        sh 'git clone https://github.com/tbenlulu/flask_hello.git'
-        sh 'pip3 install -r flask_hello/requirements.txt'
+        sh 'docker build -t hello:0.0.1 .'
       }
     }
-    stage('Test') {
+    stage('test') {
       steps {
-        sh '''python3 flask_hello/run.py &
-'''
-        sh '''curl -f -I http://localhost:5555/
-'''
+        sh 'docker run -d --network=build-network --ip=172.25.1.1 --name hello hello:0.0.1'
+	sh 'curl -I -f http://172.25.1.1:5555'
+	sh 'docker kill hello'
+	sh 'docker rm hello'
       }
     }
-  }
+    stage('deploy') {
+      steps {
+        sh 'docker run -d --network=build-network --ip=172.25.1.1 --name hello hello:0.0.1'
+      }
+    }
+    stage('prod-test') {
+      steps {
+        sh 'curl -I -f http://172.25.1.1:5555'
+      }
+    }
 
+
+  }
+}
